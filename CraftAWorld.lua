@@ -57,15 +57,15 @@ pcall(function() PlayerMovement = require(LP.PlayerScripts:WaitForChild("PlayerM
 LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- [[ VARIABEL GLOBAL ]] --
-getgenv().GridSize = 4.5; getgenv().HitCount = 4    
+getgenv().GridSize = 4.5; getgenv().HitCount = 6    
 getgenv().EnablePabrik = false
-getgenv().PabrikStartX = 9; getgenv().PabrikEndX = 89; getgenv().PabrikYPos = 6
-getgenv().GrowthTime = 180
-getgenv().BreakPosX = 8; getgenv().BreakPosY = 6
-getgenv().DropPosX = 4; getgenv().DropPosY = 6
+getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
+getgenv().GrowthTime = 115
+getgenv().BreakPosX = 6; getgenv().BreakPosY = 6
+getgenv().DropPosX = 1; getgenv().DropPosY = 6
 
 getgenv().BlockThreshold = 2
-getgenv().KeepSeedAmt = 82   
+getgenv().KeepSeedAmt = 87   
 
 getgenv().SelectedSeed = ""; getgenv().SelectedBlock = "" 
 
@@ -210,16 +210,6 @@ function CreateDropdown(Parent, Text, DefaultOptions, Var) local Frame = Instanc
 local RefreshSeedDropdown = CreateDropdown(TargetPage, "Pilih Seed", ScanAvailableItems(), "SelectedSeed")
 local RefreshBlockDropdown = CreateDropdown(TargetPage, "Pilih Block", ScanAvailableItems(), "SelectedBlock")
 CreateButton(TargetPage, "🔄 Refresh Tas", function() local newItems = ScanAvailableItems(); RefreshSeedDropdown(newItems); RefreshBlockDropdown(newItems) end)
-
-CreateTextBox(TargetPage, "Start X", getgenv().PabrikStartX, "PabrikStartX")
-CreateTextBox(TargetPage, "End X", getgenv().PabrikEndX, "PabrikEndX")
-CreateTextBox(TargetPage, "Y Pos", getgenv().PabrikYPos, "PabrikYPos")
-
-CreateTextBox(TargetPage, "Block Threshold", getgenv().BlockThreshold, "BlockThreshold")
-CreateTextBox(TargetPage, "Keep Seed Amt", getgenv().KeepSeedAmt, "KeepSeedAmt")
-
-CreateButton(TargetPage, "Set Break Pos", function() local H = workspace.Hitbox:FindFirstChild(LP.Name) if H then getgenv().BreakPosX = math.floor(H.Position.X/4.5+0.5); getgenv().BreakPosY = math.floor(H.Position.Y/4.5+0.5) end end)
-CreateButton(TargetPage, "Set Drop Pos", function() local H = workspace.Hitbox:FindFirstChild(LP.Name) if H then getgenv().DropPosX = math.floor(H.Position.X/4.5+0.5); getgenv().DropPosY = math.floor(H.Position.Y/4.5+0.5) end end)
 CreateToggle(TargetPage, "START BALANCED PABRIK", "EnablePabrik")
 -- [[ LOGIC BALANCED TURBO + SMART DROP/REFILL ]] --
 local RemotePlace = RS:WaitForChild("Remotes"):WaitForChild("PlayerPlaceItem")
@@ -267,54 +257,64 @@ task.spawn(function()
 				end
 			end
 
-			-- FASE 4: TURBO BREAK & PLACE (STACKING)
-			if getgenv().EnablePabrik then
-				WalkToGrid(getgenv().BreakPosX, getgenv().BreakPosY, true); task.wait(0.5)
-				local BreakTarget = Vector2.new(getgenv().BreakPosX - 1, getgenv().BreakPosY)
-				local MyHitbox = workspace:FindFirstChild("Hitbox") and workspace.Hitbox:FindFirstChild(LP.Name)
+			-- FASE 4: STACK HARVEST (BREAKPOS BERGERAK)
+if getgenv().EnablePabrik then
 
-				local Breaking = true
-				task.spawn(function()
-					while Breaking and getgenv().EnablePabrik do
-						RemoteBreak:FireServer(BreakTarget)
-						task.wait(0.05) 
-					end
-				end)
+	local startX = getgenv().BreakPosX
+	local endX = getgenv().BreakPosX + 4   -- panjang stacking area
+	local y = getgenv().BreakPosY
 
-				while getgenv().EnablePabrik do
-					local currentAmt = GetItemAmountByID(getgenv().SelectedBlock)
-					if currentAmt <= getgenv().BlockThreshold then break end
+	while getgenv().EnablePabrik do
 
-					local blockSlot = GetSlotByItemID(getgenv().SelectedBlock)
-					if blockSlot then RemotePlace:FireServer(BreakTarget, blockSlot) end
+		local currentAmt = GetItemAmountByID(getgenv().SelectedBlock)
+		if currentAmt <= getgenv().BlockThreshold then break end
 
-					task.wait(0.25)
+		WalkToGrid((startX -2), y, true)
+		task.wait(0.5)
 
-					if MyHitbox then
-						local oldCF = MyHitbox.CFrame
-						MyHitbox.CanCollide = false
-						MyHitbox.CFrame = CFrame.new((getgenv().BreakPosX - 1) * 4.5, getgenv().BreakPosY * 4.5, oldCF.Position.Z)
-						task.wait(0.05)
-						MyHitbox.CFrame = oldCF
-						MyHitbox.CanCollide = true
-					end
-					task.wait(0.05)
-				end
+		-- sweep kanan
+		for x = startX, endX do
+			if not getgenv().EnablePabrik then break end
 
-				if getgenv().EnablePabrik then task.wait(2.5) end
-				Breaking = false 
+			WalkToGrid(x, y, true)
 
-				task.wait(0.2)
-				if MyHitbox then
-					local oldCF = MyHitbox.CFrame
-					MyHitbox.CanCollide = false
-					MyHitbox.CFrame = CFrame.new((getgenv().BreakPosX - 1) * 4.5, getgenv().BreakPosY * 4.5, oldCF.Position.Z)
-					task.wait(0.2)
-					MyHitbox.CFrame = oldCF
-					MyHitbox.CanCollide = true
-				end
+			local target = Vector2.new(x - 1, y)
+
+			local slot = GetSlotByItemID(getgenv().SelectedBlock)
+			if slot then
+				RemotePlace:FireServer(target, slot)
 			end
 
+			for hit = 1, getgenv().HitCount do
+				RemoteBreak:FireServer(target)
+				task.wait(getgenv().BreakDelay)
+			end
+		end
+
+		-- sweep balik kiri
+		for x = endX, startX, -1 do
+			if not getgenv().EnablePabrik then break end
+
+			WalkToGrid(x, y, true)
+
+			local target = Vector2.new(x - 1, y)
+
+			local slot = GetSlotByItemID(getgenv().SelectedBlock)
+			if slot then
+				RemotePlace:FireServer(target, slot)
+			end
+
+			for hit = 1, getgenv().HitCount do
+				RemoteBreak:FireServer(target)
+				task.wait(getgenv().BreakDelay)
+			end
+		end
+	end
+
+	-- step pickup
+	WalkToGrid(endX + 1, y, true)
+	task.wait(0.5)
+end
 			-- FASE 5: AUTO DROP & REFILL (SMART STORAGE)
 			if getgenv().EnablePabrik then 
 				local currentSeedAmt = GetItemAmountByID(getgenv().SelectedSeed)
