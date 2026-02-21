@@ -57,7 +57,7 @@ pcall(function() PlayerMovement = require(LP.PlayerScripts:WaitForChild("PlayerM
 LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- [[ VARIABEL GLOBAL ]] --
-getgenv().GridSize = 4.5; getgenv().HitCount = 6    
+getgenv().GridSize = 4.5; getgenv().HitCount = 4    
 getgenv().EnablePabrik = false
 getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
 getgenv().GrowthTime = 115
