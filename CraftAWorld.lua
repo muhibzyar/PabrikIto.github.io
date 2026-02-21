@@ -62,7 +62,7 @@ getgenv().EnablePabrik = false
 getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
 getgenv().GrowthTime = 115
 getgenv().BreakPosX = 6; getgenv().BreakPosY = 6
-getgenv().DropPosX = 1; getgenv().DropPosY = 6
+getgenv().DropPosX = 2; getgenv().DropPosY = 6
 
 getgenv().BlockThreshold = 2
 getgenv().KeepSeedAmt = 87   
