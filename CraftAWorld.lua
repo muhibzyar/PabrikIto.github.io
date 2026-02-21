@@ -65,7 +65,7 @@ getgenv().BreakPosX = 6; getgenv().BreakPosY = 6
 getgenv().DropPosX = 2; getgenv().DropPosY = 6
 
 getgenv().BlockThreshold = 2
-getgenv().KeepSeedAmt = 87   
+getgenv().KeepSeedAmt = 85   
 
 getgenv().SelectedSeed = ""; getgenv().SelectedBlock = "" 
 
