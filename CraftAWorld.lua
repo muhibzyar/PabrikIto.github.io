@@ -39,7 +39,8 @@ getgenv().ScriptVersion = "Pabrik v0.50-SweepFix"
 
 -- ========================================== --
 -- [[ SETTING KECEPATAN ]]
-getgenv().PlaceDelay = 0.05 
+getgenv().PlaceDelay = 0.05
+getgenv().BreakDelayHarvest = 0.05
 getgenv().BreakDelay = 0.25 
 getgenv().DropDelay = 0.5     
 getgenv().StepDelay = 0.1   
@@ -59,14 +60,14 @@ LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickBu
 -- [[ VARIABEL GLOBAL ]] --
 getgenv().GridSize = 4.5; getgenv().HitCount = 4 
 getgenv().EnablePabrik = false
-getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 50; getgenv().PabrikYPos = 6
+getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
 getgenv().GrowthTime = 5
 getgenv().BreakPosX = 6; getgenv().BreakPosY = 6
 getgenv().DropPosX = 2; getgenv().DropPosY = 6
 getgenv().PabrikState = "PLANT"
 
 getgenv().BlockThreshold = 2
-getgenv().KeepSeedAmt = 52   
+getgenv().KeepSeedAmt = 95   
 
 getgenv().SelectedSeed = ""; getgenv().SelectedBlock = "" 
 
@@ -263,7 +264,7 @@ task.spawn(function()
 
 					for hit = 1, getgenv().HitCount do
 						RemoteBreak:FireServer(TGrid)
-						task.wait(getgenv().BreakDelay)
+						task.wait(getgenv().BreakDelayHarvest)
 					end
 				end
 
