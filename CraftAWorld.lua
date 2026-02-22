@@ -40,7 +40,7 @@ getgenv().ScriptVersion = "Pabrik v0.50-SweepFix"
 -- ========================================== --
 -- [[ SETTING KECEPATAN ]]
 getgenv().PlaceDelay = 0.05 
-getgenv().BreakDelay = 0.05 
+getgenv().BreakDelay = 0.25 
 getgenv().DropDelay = 0.5     
 getgenv().StepDelay = 0.1   
 -- ========================================== --
@@ -57,15 +57,16 @@ pcall(function() PlayerMovement = require(LP.PlayerScripts:WaitForChild("PlayerM
 LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- [[ VARIABEL GLOBAL ]] --
-getgenv().GridSize = 4.5; getgenv().HitCount = 4    
+getgenv().GridSize = 4.5; getgenv().HitCount = 4 
 getgenv().EnablePabrik = false
-getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
-getgenv().GrowthTime = 115
+getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 50; getgenv().PabrikYPos = 6
+getgenv().GrowthTime = 5
 getgenv().BreakPosX = 6; getgenv().BreakPosY = 6
 getgenv().DropPosX = 2; getgenv().DropPosY = 6
+getgenv().PabrikState = "PLANT"
 
 getgenv().BlockThreshold = 2
-getgenv().KeepSeedAmt = 85   
+getgenv().KeepSeedAmt = 52   
 
 getgenv().SelectedSeed = ""; getgenv().SelectedBlock = "" 
 
@@ -205,8 +206,6 @@ function CreateButton(Parent, Text, Callback) local Btn = Instance.new("TextButt
 function CreateDropdown(Parent, Text, DefaultOptions, Var) local Frame = Instance.new("Frame", Parent); Frame.BackgroundColor3 = Theme.Item; Frame.Size = UDim2.new(1, -10, 0, 35); Frame.ClipsDescendants = true; local C = Instance.new("UICorner", Frame); C.CornerRadius = UDim.new(0, 6); local TopBtn = Instance.new("TextButton", Frame); TopBtn.Size = UDim2.new(1, 0, 0, 35); TopBtn.BackgroundTransparency = 1; TopBtn.Text = ""; local Label = Instance.new("TextLabel", TopBtn); Label.Text = Text .. ": Not Selected"; Label.TextColor3 = Theme.Text; Label.Font = Enum.Font.GothamSemibold; Label.TextSize = 11; Label.Size = UDim2.new(1, -20, 1, 0); Label.Position = UDim2.new(0, 10, 0, 0); Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; local Icon = Instance.new("TextLabel", TopBtn); Icon.Text = "v"; Icon.TextColor3 = Theme.Purple; Icon.Font = Enum.Font.GothamBold; Icon.TextSize = 12; Icon.Size = UDim2.new(0, 20, 1, 0); Icon.Position = UDim2.new(1, -25, 0, 0); Icon.BackgroundTransparency = 1; local Scroll = Instance.new("ScrollingFrame", Frame); Scroll.Position = UDim2.new(0,0,0,35); Scroll.Size = UDim2.new(1,0,1,-35); Scroll.BackgroundTransparency = 1; Scroll.BorderSizePixel = 0; Scroll.ScrollBarThickness = 2; Scroll.ScrollBarImageColor3 = Theme.Purple; local List = Instance.new("UIListLayout", Scroll); local isOpen = false; TopBtn.MouseButton1Click:Connect(function() isOpen = not isOpen; if isOpen then Frame:TweenSize(UDim2.new(1, -10, 0, 110), "Out", "Quad", 0.2, true); Icon.Text = "^" else Frame:TweenSize(UDim2.new(1, -10, 0, 35), "Out", "Quad", 0.2, true); Icon.Text = "v" end end); local function RefreshOptions(Options) for _, child in ipairs(Scroll:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end; for _, opt in ipairs(Options) do local OptBtn = Instance.new("TextButton", Scroll); OptBtn.Size = UDim2.new(1, 0, 0, 25); OptBtn.BackgroundColor3 = Color3.fromRGB(35,35,35); OptBtn.TextColor3 = Theme.Text; OptBtn.Text = tostring(opt); OptBtn.Font = Enum.Font.Gotham; OptBtn.TextSize = 11; OptBtn.MouseButton1Click:Connect(function() getgenv()[Var] = opt; Label.Text = Text .. ": " .. tostring(opt); isOpen = false; Frame:TweenSize(UDim2.new(1, -10, 0, 35), "Out", "Quad", 0.2, true); Icon.Text = "v" end) end; Scroll.CanvasSize = UDim2.new(0, 0, 0, #Options * 25) end; RefreshOptions(DefaultOptions); return RefreshOptions end
 
 -- [[ INJECT MENU KE TARGET PAGE ]] --
-
-
 local RefreshSeedDropdown = CreateDropdown(TargetPage, "Pilih Seed", ScanAvailableItems(), "SelectedSeed")
 local RefreshBlockDropdown = CreateDropdown(TargetPage, "Pilih Block", ScanAvailableItems(), "SelectedBlock")
 CreateButton(TargetPage, "🔄 Refresh Tas", function() local newItems = ScanAvailableItems(); RefreshSeedDropdown(newItems); RefreshBlockDropdown(newItems) end)
@@ -217,132 +216,119 @@ local RemoteBreak = RS:WaitForChild("Remotes"):WaitForChild("PlayerFist")
 
 task.spawn(function()
 	while true do
+
 		if getgenv().EnablePabrik then
-			if getgenv().SelectedSeed == "" or getgenv().SelectedBlock == "" then task.wait(2); continue end
 
-			-- FASE 1: PLANTING
-			WalkToGrid(getgenv().PabrikStartX, getgenv().PabrikYPos, true); task.wait(0.5)
-			for x = getgenv().PabrikStartX, getgenv().PabrikEndX do
-				if not getgenv().EnablePabrik then break end
-				local seedSlot = GetSlotByItemID(getgenv().SelectedSeed)
-				if not seedSlot then break end
+			local state = getgenv().PabrikState
 
-				WalkToGrid(x, getgenv().PabrikYPos, true); task.wait(0.1) 
-				RemotePlace:FireServer(Vector2.new(x, getgenv().PabrikYPos), seedSlot); task.wait(getgenv().PlaceDelay)
-			end
+			if state == "PLANT" then
 
-			-- FASE 2: WAITING
-			if getgenv().EnablePabrik then for w = 1, getgenv().GrowthTime do if not getgenv().EnablePabrik then break end; task.wait(1) end end
+				print("PLANT")
 
-			-- FASE 3: HARVESTING (DENGAN AUTO-COLLECT SWEEP)
-			if getgenv().EnablePabrik then
-				WalkToGrid(getgenv().PabrikStartX, getgenv().PabrikYPos, true); task.wait(0.5)
+				WalkToGrid(getgenv().PabrikStartX, getgenv().PabrikYPos, true)
+
 				for x = getgenv().PabrikStartX, getgenv().PabrikEndX do
 					if not getgenv().EnablePabrik then break end
-					WalkToGrid(x, getgenv().PabrikYPos, true); task.wait(0.1) 
+
+					local seedSlot = GetSlotByItemID(getgenv().SelectedSeed)
+					if not seedSlot then break end
+
+					WalkToGrid(x, getgenv().PabrikYPos, true)
+					RemotePlace:FireServer(Vector2.new(x, getgenv().PabrikYPos), seedSlot)
+					task.wait(getgenv().PlaceDelay)
+				end
+
+				getgenv().PabrikState = "WAIT"
+
+			elseif state == "WAIT" then
+
+				print("WAIT")
+
+				task.wait(getgenv().GrowthTime)
+
+				getgenv().PabrikState = "HARVEST"
+
+			elseif state == "HARVEST" then
+
+				print("HARVEST")
+
+				WalkToGrid(getgenv().PabrikStartX, getgenv().PabrikYPos, true)
+
+				for x = getgenv().PabrikStartX, getgenv().PabrikEndX do
+					if not getgenv().EnablePabrik then break end
+
+					WalkToGrid(x, getgenv().PabrikYPos, true)
+
 					local TGrid = Vector2.new(x, getgenv().PabrikYPos)
-					for hit = 1, getgenv().HitCount do RemoteBreak:FireServer(TGrid); task.wait(getgenv().BreakDelay) end
-					task.wait(0.1) 
+
+					for hit = 1, getgenv().HitCount do
+						RemoteBreak:FireServer(TGrid)
+						task.wait(getgenv().BreakDelay)
+					end
 				end
 
-				-- [[ LOGIKA SAPU BERSIH TAMBAHAN ]]
-				if getgenv().EnablePabrik then
-					-- Nentuin arah: kalau start lebih kecil dari end, maju ke depan. Kalau sebaliknya, maju ke belakang.
-					local moveDirection = (getgenv().PabrikEndX >= getgenv().PabrikStartX) and 1 or -1
-					local sweepPosX = getgenv().PabrikEndX + moveDirection
-
-					-- Jalan 1 langkah ke depan buat ambil sisa block/seed
-					WalkToGrid(sweepPosX, getgenv().PabrikYPos, true)
-					task.wait(0.6) -- Nunggu sebentar biar magnet karakter nyedot semua drop
-				end
-			end
-
-			-- FASE 4: STACK HARVEST (BREAKPOS BERGERAK)
-if getgenv().EnablePabrik then
+				getgenv().PabrikState = "STACK"
+			elseif state == "STACK" then
 
 	local startX = getgenv().BreakPosX
-	local endX = getgenv().BreakPosX + 4   -- panjang stacking area
+	local endX = getgenv().BreakPosX + 4
 	local y = getgenv().BreakPosY
 
-	while getgenv().EnablePabrik do
 
-		local currentAmt = GetItemAmountByID(getgenv().SelectedBlock)
-		if currentAmt <= getgenv().BlockThreshold then break end
+while getgenv().EnablePabrik do
 
-		WalkToGrid((startX -2), y, true)
-		task.wait(0.5)
+	local currentAmt = GetItemAmountByID(getgenv().SelectedBlock)
+	if currentAmt <= getgenv().BlockThreshold then break end
+	local entryX = startX - 2
+	WalkToGrid(entryX, y, true)
+	task.wait(0.3)
 
-		-- sweep kanan
-		for x = startX, endX do
-			if not getgenv().EnablePabrik then break end
+	
+	for x = startX, endX do
+		if not getgenv().EnablePabrik then break end
 
-			WalkToGrid(x, y, true)
+		WalkToGrid(x, y, true)
 
-			local target = Vector2.new(x - 1, y)
+		local target = Vector2.new(x - 1, y)
 
-			local slot = GetSlotByItemID(getgenv().SelectedBlock)
-			if slot then
-				RemotePlace:FireServer(target, slot)
-			end
-
-			for hit = 1, getgenv().HitCount do
-				RemoteBreak:FireServer(target)
-				task.wait(getgenv().BreakDelay)
-			end
+		local slot = GetSlotByItemID(getgenv().SelectedBlock)
+		if slot then
+			RemotePlace:FireServer(target, slot)
 		end
 
-		-- sweep balik kiri
-		for x = endX, startX, -1 do
-			if not getgenv().EnablePabrik then break end
-
-			WalkToGrid(x, y, true)
-
-			local target = Vector2.new(x - 1, y)
-
-			local slot = GetSlotByItemID(getgenv().SelectedBlock)
-			if slot then
-				RemotePlace:FireServer(target, slot)
-			end
-
-			for hit = 1, getgenv().HitCount do
-				RemoteBreak:FireServer(target)
-				task.wait(getgenv().BreakDelay)
-			end
+		for hit = 1, getgenv().HitCount do
+			RemoteBreak:FireServer(target)
+			task.wait(getgenv().BreakDelay)
 		end
 	end
 
-	-- step pickup
 	WalkToGrid(endX + 1, y, true)
-	task.wait(0.5)
+	task.wait(0.3)
+
+	WalkToGrid(startX - 1, y, true)
+	task.wait(0.3)
 end
-			-- FASE 5: AUTO DROP & REFILL (SMART STORAGE)
-			if getgenv().EnablePabrik then 
+
+getgenv().PabrikState = "DROP"
+			elseif state == "DROP" then
+
+				print("DROP")
+
+				WalkToGrid(getgenv().DropPosX, getgenv().DropPosY, true)
+
 				local currentSeedAmt = GetItemAmountByID(getgenv().SelectedSeed)
+				local toDrop = currentSeedAmt - getgenv().KeepSeedAmt
 
-				if currentSeedAmt ~= getgenv().KeepSeedAmt then
-					WalkToGrid(getgenv().DropPosX, getgenv().DropPosY, true)
-					task.wait(1.5) 
-
-					while getgenv().EnablePabrik do
-						local current = GetItemAmountByID(getgenv().SelectedSeed)
-						local toDrop = current - getgenv().KeepSeedAmt
-
-						if toDrop <= 0 then break end
-
-						local dropNow = math.min(toDrop, 200)
-						local success = DropItemLogic(getgenv().SelectedSeed, dropNow)
-
-						if success then
-							task.wait(getgenv().DropDelay + 0.3) 
-						else
-							break 
-						end
-					end
-
-					ForceRestoreUI()
+				if toDrop > 0 then
+					DropItemLogic(getgenv().SelectedSeed, toDrop)
+					task.wait(getgenv().DropDelay)
 				end
+
+				getgenv().PabrikState = "PLANT"
 			end
+
 		end
-		task.wait(1)
+
+		task.wait(0.2)
 	end
 end)
