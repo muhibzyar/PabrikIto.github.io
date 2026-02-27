@@ -41,7 +41,7 @@ getgenv().ScriptVersion = "Pabrik v0.50-SweepFix"
 -- [[ SETTING KECEPATAN ]]
 getgenv().PlaceDelay = 0.05
 getgenv().BreakDelayHarvest = 0.05
-getgenv().BreakDelay = 0.25 
+getgenv().BreakDelay = 0.15 
 getgenv().DropDelay = 0.5     
 getgenv().StepDelay = 0.1   
 -- ========================================== --
@@ -58,7 +58,7 @@ pcall(function() PlayerMovement = require(LP.PlayerScripts:WaitForChild("PlayerM
 LP.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- [[ VARIABEL GLOBAL ]] --
-getgenv().GridSize = 4.5; getgenv().HitCount = 4 
+getgenv().GridSize = 4.5; getgenv().HitCount = 8
 getgenv().EnablePabrik = false
 getgenv().PabrikStartX = 10; getgenv().PabrikEndX = 95; getgenv().PabrikYPos = 6
 getgenv().GrowthTime = 5
